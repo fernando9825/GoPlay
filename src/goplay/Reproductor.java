@@ -26,13 +26,17 @@ public class Reproductor {
     public Reproductor() {
     }
 
+    BasicPlayer player = new BasicPlayer();
+   
+
     public void reproducir(String nombreCancion) {
         //String songName = "HungryKidsofHungary-ScatteredDiamonds.mp3";
         //String direccionCorregida = System.getProperty("user.dir") + "/" + songName;
-        BasicPlayer player = new BasicPlayer();
+        
         try {
-            player.open(new URL("file:///" + nombreCancion));
-            player.play();
+                player.open(new URL("file:///" + nombreCancion));
+                player.play();
+            
         } catch (BasicPlayerException | MalformedURLException e) {
             e.printStackTrace();
         }

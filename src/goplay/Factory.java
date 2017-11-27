@@ -15,10 +15,10 @@ import UI.*;
 
 public class Factory {
 
-    public Factory(int x) {
+     public Factory(int x) {
         switch (x) {
             case 1: {
-                new Thread(new Splash()).start();
+                 new prueba().setVisible(true);
                 break;
             }
             case 2:{
@@ -26,4 +26,15 @@ public class Factory {
             }
         }
     }
+//    public Factory(int x) {
+//        switch (x) {
+//            case 1: {
+//                new Thread(new Splash()).start();
+//                break;
+//            }
+//            case 2:{
+//                new Principal().setVisible(true);
+//            }
+//        }
+//    }
 }
