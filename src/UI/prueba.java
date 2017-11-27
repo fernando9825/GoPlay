@@ -5,13 +5,24 @@
  */
 package UI;
 
+import com.mpatric.mp3agic.InvalidDataException;
+import com.mpatric.mp3agic.UnsupportedTagException;
+import goplay.ExtraerTAGS;
 import goplay.Reproductor;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import java.io.FilenameFilter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import static javafx.scene.input.KeyCode.T;
+import javax.swing.table.DefaultTableModel;
+import org.apache.commons.io.filefilter.WildcardFileFilter;
 
 /**
  *
@@ -22,8 +33,14 @@ public class prueba extends javax.swing.JFrame {
     /**
      * Creates new form prueba
      */
+    //Esto sirve para moldear la tabla
+    String col[] = {"Pista", "Artista", "Título", "Álbum", "Año", "Género"};
+    DefaultTableModel tableModel = new DefaultTableModel(col, 0);
+
     public prueba() {
         initComponents();
+
+        this.tablaReproductor.setModel(tableModel);
     }
 
     /**
@@ -37,7 +54,7 @@ public class prueba extends javax.swing.JFrame {
 
         btnImportarCancion = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
-        jTable1 = new javax.swing.JTable();
+        tablaReproductor = new javax.swing.JTable();
         btnImportarCanciones = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
@@ -49,7 +66,7 @@ public class prueba extends javax.swing.JFrame {
             }
         });
 
-        jTable1.setModel(new javax.swing.table.DefaultTableModel(
+        tablaReproductor.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
                 {null, null, null, null},
                 {null, null, null, null},
@@ -60,7 +77,7 @@ public class prueba extends javax.swing.JFrame {
                 "Title 1", "Title 2", "Title 3", "Title 4"
             }
         ));
-        jScrollPane1.setViewportView(jTable1);
+        jScrollPane1.setViewportView(tablaReproductor);
 
         btnImportarCanciones.setText("Importar canciones");
         btnImportarCanciones.addActionListener(new java.awt.event.ActionListener() {
@@ -74,17 +91,12 @@ public class prueba extends javax.swing.JFrame {
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(btnImportarCancion))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(63, 63, 63)
-                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 585, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(btnImportarCanciones)))
-                .addContainerGap(83, Short.MAX_VALUE))
+                    .addComponent(btnImportarCancion)
+                    .addComponent(btnImportarCanciones)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 1235, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(36, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -93,9 +105,9 @@ public class prueba extends javax.swing.JFrame {
                 .addComponent(btnImportarCancion)
                 .addGap(18, 18, 18)
                 .addComponent(btnImportarCanciones)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 72, Short.MAX_VALUE)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 254, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(63, 63, 63))
+                .addGap(28, 28, 28)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 401, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(59, Short.MAX_VALUE))
         );
 
         pack();
@@ -141,6 +153,7 @@ public class prueba extends javax.swing.JFrame {
     private void btnImportarCancionesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnImportarCancionesActionPerformed
 
         String toReturn = null;
+        String directorio;
         JFileChooser chooser = new JFileChooser();
         chooser.setCurrentDirectory(new java.io.File(".mp3"));
         chooser.setDialogTitle("Elige el directorio de tus canciones");
@@ -151,16 +164,46 @@ public class prueba extends javax.swing.JFrame {
         chooser.setAcceptAllFileFilterUsed(false);
         int choosen = chooser.showOpenDialog(this);
         if (choosen == JFileChooser.APPROVE_OPTION) {
-            System.out.println(chooser.getCurrentDirectory().toString() + "\\" + chooser.getSelectedFile().getName());
+            directorio = chooser.getCurrentDirectory().toString()
+                    + "\\" + chooser.getSelectedFile().getName() + "\\";
+            System.out.println(directorio);
+            Reproductor player = new Reproductor();
+            File[] filesInDirectory = player.finder(directorio);
+
+            File dir = new File(directorio);
+            FileFilter fileFilter = new WildcardFileFilter("*.mp3");
+            File[] files = dir.listFiles(fileFilter);
+
+            //Se crea un nuevo hilo para que el reproductor no laguee :v
+            new Thread(new Runnable() {
+                public void run() {
+                    //Aquí agregamos el proceso a ejecutar.
+                    int x = 0;
+                    String[] direcciones = new String[files.length];
+                    ExtraerTAGS tag = new ExtraerTAGS();
+                    for (File file : files) {
+                        try {
+                            direcciones[x] = file.getAbsolutePath();
+                            System.out.println(direcciones[x]);
+                            //tag.Informacion(direcciones[x]);
+                            tag.Etiquetas(direcciones[x], tableModel);
+                            x++;
+                        } catch (IOException | UnsupportedTagException | InvalidDataException ex) {
+                            Logger.getLogger(prueba.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                    }
+
+                }
+            }).start();
+
+            
+
         }
-        chooser.setCurrentDirectory(new java.io.File(chooser.getCurrentDirectory() + "\\\""));
-        
-        
-       File[] filesInDirectory = chooser.getCurrentDirectory().listFiles();
-   
-        for (File file : filesInDirectory) {
-            System.out.println(file.getName());
-        }
+
+//        File[] filesInDirectory = chooser.getCurrentDirectory().listFiles();
+//        for (File file : filesInDirectory) {
+//            System.out.println(file.getName());
+//        }
     }//GEN-LAST:event_btnImportarCancionesActionPerformed
 
     /**
@@ -210,6 +253,6 @@ public class prueba extends javax.swing.JFrame {
     private javax.swing.JButton btnImportarCancion;
     private javax.swing.JButton btnImportarCanciones;
     private javax.swing.JScrollPane jScrollPane1;
-    private javax.swing.JTable jTable1;
+    private javax.swing.JTable tablaReproductor;
     // End of variables declaration//GEN-END:variables
 }
