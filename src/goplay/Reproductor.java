@@ -5,17 +5,15 @@
  */
 package goplay;
 
+import java.util.List;
 import java.io.File;
 import java.io.FilenameFilter;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.Stack;
 import javazoom.jlgui.basicplayer.BasicPlayer;
 import javazoom.jlgui.basicplayer.BasicPlayerException;
-import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.FileUtils;
 
 /**
  *
@@ -27,61 +25,40 @@ public class Reproductor {
     }
 
     BasicPlayer player = new BasicPlayer();
-   
 
-    public void reproducir(String nombreCancion) {
+    public boolean reproducir(String nombreCancion) {
         //String songName = "HungryKidsofHungary-ScatteredDiamonds.mp3";
         //String direccionCorregida = System.getProperty("user.dir") + "/" + songName;
-        
+        boolean reproduciendo = false;
         try {
-                player.open(new URL("file:///" + nombreCancion));
-                player.play();
-            
+            player.open(new URL("file:///" + nombreCancion));
+            player.play();
+            reproduciendo = true;
+
         } catch (BasicPlayerException | MalformedURLException e) {
             e.printStackTrace();
         }
+        return reproduciendo;
     }
 
-    public File[] finder(String dirName) {
-        File dir = new File(dirName);
+  
 
-        return dir.listFiles(new FilenameFilter() {
-            public boolean accept(File dir, String filename) {
-                return filename.endsWith(".mp3");
-            }
-        });
-
-    }
-
-    public Collection getAllFolderFiles(File folder, String[] extensions) {
-        Set results = new HashSet();
-        Stack subFolders = new Stack();
-        File currentFolder = folder;
-        while (currentFolder != null && currentFolder.isDirectory() && currentFolder.canRead()) {
-            File[] fs = null;
-            try {
-                fs = currentFolder.listFiles();
-            } catch (SecurityException e) {
-            }
-
-            if (fs != null && fs.length > 0) {
-                for (File f : fs) {
-                    if (!f.isDirectory()) {
-                        if (extensions == null || FilenameUtils.isExtension(f.getName(), extensions)) {
-                            results.add(f);
-                        }
-                    } else {
-                        subFolders.push(f);
-                    }
-                }
-            }
-
-            if (!subFolders.isEmpty()) {
-                currentFolder = (File) subFolders.pop();
-            } else {
-                currentFolder = null;
-            }
+    public File dir; //Se declara fuera para que sea global
+    public String[] buscarCanciones(String ubicacion) throws IOException {
+        dir = new File(ubicacion);
+        
+        String[] extensions = new String[]{"mp3", ".flac"};
+        System.out.println("Obteniendo todos los .mp3 y .flac de " + dir.getAbsolutePath()
+                + " y los subfolders");
+        List<File> files = (List<File>) FileUtils.listFiles(dir, extensions, true);
+        String[] ubicaciones = new String[files.size()];
+        int x = 0;
+        for (File file : files) {
+            ubicaciones[x] = file.getAbsolutePath();
+            x++;
         }
-        return results;
+        return ubicaciones;
     }
+    
+    
 }

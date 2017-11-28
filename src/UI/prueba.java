@@ -7,25 +7,18 @@ package UI;
 
 import com.mpatric.mp3agic.InvalidDataException;
 import com.mpatric.mp3agic.UnsupportedTagException;
-import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils.Commons;
 import goplay.ExtraerTAGS;
 import goplay.Reproductor;
-import java.io.File;
-import java.io.FileFilter;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import java.io.FilenameFilter;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import static javafx.scene.input.KeyCode.T;
+import java.util.Collections;
+import javax.swing.ImageIcon;
+import javax.swing.JOptionPane;
 import javax.swing.RowFilter;
-import javax.swing.table.DefaultTableModel;
-import org.apache.commons.io.filefilter.WildcardFileFilter;
-import javax.swing.RowSorter;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
@@ -40,12 +33,17 @@ public class prueba extends javax.swing.JFrame {
      * Creates new form prueba
      */
     //Esto sirve para moldear la tabla
-    String[] direcciones;
-    String col[] = {"Pista", "Artista", "Título", "Álbum", "Año", "Género"};
+    ArrayList<String> ubicacionesArrayList = new ArrayList<String>();
+    String col[] = {"#", "Artista", "Título", "Álbum", "Año", "Género"};
     DefaultTableModel tableModel = new DefaultTableModel(col, 0);
+    String[] canciones;
 
     //Creando el objeto para reproducir Canciones
     Reproductor player = new Reproductor();
+    ExtraerTAGS tag = new ExtraerTAGS();
+
+    //Variables para manegar la reproduccion
+    int pos, fila;
 
     public prueba() {
         initComponents();
@@ -64,6 +62,14 @@ public class prueba extends javax.swing.JFrame {
         }
     }
 
+    private void etiquetasLabel() {
+        this.lblNum.setText(String.valueOf((pos + 1)));
+        this.lblArtista.setText(tag.artista);
+        this.lblTitulo.setText(tag.titulo);
+        this.lblAnhio.setText(tag.anhio);
+        this.lblGenero.setText(tag.genero);
+    }
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -76,7 +82,6 @@ public class prueba extends javax.swing.JFrame {
         btnImportarCancion = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
         tablaReproductor = new javax.swing.JTable();
-        btnImportarCanciones = new javax.swing.JButton();
         txtBuscar = new javax.swing.JTextField();
         jLabel1 = new javax.swing.JLabel();
         lblNum = new javax.swing.JLabel();
@@ -84,6 +89,7 @@ public class prueba extends javax.swing.JFrame {
         lblArtista = new javax.swing.JLabel();
         lblAnhio = new javax.swing.JLabel();
         lblGenero = new javax.swing.JLabel();
+        lblImagen = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -119,6 +125,11 @@ public class prueba extends javax.swing.JFrame {
             }
         });
 
+        txtBuscar.addPropertyChangeListener(new java.beans.PropertyChangeListener() {
+            public void propertyChange(java.beans.PropertyChangeEvent evt) {
+                txtBuscarPropertyChange(evt);
+            }
+        });
         txtBuscar.addKeyListener(new java.awt.event.KeyAdapter() {
             public void keyReleased(java.awt.event.KeyEvent evt) {
                 txtBuscarKeyReleased(evt);
@@ -137,6 +148,8 @@ public class prueba extends javax.swing.JFrame {
 
         lblGenero.setText("jLabel6");
 
+        lblImagen.setText("labelImagen");
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -153,14 +166,19 @@ public class prueba extends javax.swing.JFrame {
                         .addComponent(txtBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 541, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 850, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(138, 138, 138)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(lblNum)
-                            .addComponent(lblTitulo)
-                            .addComponent(lblArtista)
-                            .addComponent(lblAnhio)
-                            .addComponent(lblGenero))))
-                .addContainerGap(242, Short.MAX_VALUE))
+                            .addGroup(layout.createSequentialGroup()
+                                .addGap(138, 138, 138)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(lblNum)
+                                    .addComponent(lblTitulo)
+                                    .addComponent(lblArtista)
+                                    .addComponent(lblAnhio)
+                                    .addComponent(lblGenero)))
+                            .addGroup(layout.createSequentialGroup()
+                                .addGap(120, 120, 120)
+                                .addComponent(lblImagen)))))
+                .addContainerGap(232, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -188,7 +206,9 @@ public class prueba extends javax.swing.JFrame {
                         .addGap(51, 51, 51)
                         .addComponent(lblAnhio)
                         .addGap(49, 49, 49)
-                        .addComponent(lblGenero)))
+                        .addComponent(lblGenero)
+                        .addGap(31, 31, 31)
+                        .addComponent(lblImagen)))
                 .addContainerGap(59, Short.MAX_VALUE))
         );
 
@@ -205,35 +225,44 @@ public class prueba extends javax.swing.JFrame {
         fc.setAcceptAllFileFilterUsed(false);
         fc.setMultiSelectionEnabled(true);
 
-        File ruta;
-        //In response to a button click:
-        int returnVal = fc.showOpenDialog(this);
+        //Si le da aceptar luego de elegir el directorio
+        int respuesta = fc.showOpenDialog(this);
 
-        if (returnVal == JFileChooser.APPROVE_OPTION) {
+        if (respuesta == JFileChooser.APPROVE_OPTION) {
             try {
                 cancion = fc.getSelectedFile().getCanonicalPath();
                 System.out.println(cancion);
-
                 player.reproducir(cancion);
-
-//            ObjectInputStream entrada = null;
-//            try {
-//                entrada = new ObjectInputStream(new FileInputStream(ruta));
-//                System.out.println(entrada);
-//            } catch (FileNotFoundException ex) {
-//                Logger.getLogger(prueba.class.getName()).log(Level.SEVERE, null, ex);
-//            } catch (IOException ex) {
-//                Logger.getLogger(prueba.class.getName()).log(Level.SEVERE, null, ex);
-//            }
             } catch (IOException ex) {
                 Logger.getLogger(prueba.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
     }//GEN-LAST:event_btnImportarCancionActionPerformed
 
+    public boolean boton = false;
     private void btnImportarCancionesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnImportarCancionesActionPerformed
 
-        String toReturn = null;
+//        String directorio;
+//        JFileChooser chooser = new JFileChooser();
+//        chooser.setCurrentDirectory(new java.io.File(".mp3"));
+//        chooser.setDialogTitle("Elige el directorio de tus canciones");
+//        FileNameExtensionFilter filter = new FileNameExtensionFilter("Archivo de audio MP3 (*.mp3)", "mp3");
+//        chooser.setFileFilter(filter);
+//        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+//        //Evitar que hayan otros tipos de archivos
+//        chooser.setAcceptAllFileFilterUsed(false);
+//        int choosen = chooser.showOpenDialog(this);
+//        if (choosen == JFileChooser.APPROVE_OPTION) {
+//            directorio = chooser.getCurrentDirectory().toString()
+//                    + "\\" + chooser.getSelectedFile().getName() + "\\";
+//            System.out.println(directorio);
+//
+//            File[] filesInDirectory = player.finder(directorio);
+//
+//            File dir = new File(directorio);
+//            FileFilter fileFilter = new WildcardFileFilter("*.mp3");
+//            File[] files = dir.listFiles(fileFilter);
+        //Probando algo nuevo
         String directorio;
         JFileChooser chooser = new JFileChooser();
         chooser.setCurrentDirectory(new java.io.File(".mp3"));
@@ -245,30 +274,34 @@ public class prueba extends javax.swing.JFrame {
         chooser.setAcceptAllFileFilterUsed(false);
         int choosen = chooser.showOpenDialog(this);
         if (choosen == JFileChooser.APPROVE_OPTION) {
+            boton = false;
+            this.btnImportarCanciones.setEnabled(boton);
             directorio = chooser.getCurrentDirectory().toString()
                     + "\\" + chooser.getSelectedFile().getName() + "\\";
             System.out.println(directorio);
 
-            File[] filesInDirectory = player.finder(directorio);
+            //File[] files = player.finder(directorio);
+            try {
+                canciones = player.buscarCanciones(directorio);
+            } catch (IOException ex) {
+                Logger.getLogger(prueba.class.getName()).log(Level.SEVERE, null, ex);
+            }
 
-            File dir = new File(directorio);
-            FileFilter fileFilter = new WildcardFileFilter("*.mp3");
-            File[] files = dir.listFiles(fileFilter);
-
+            //FIN DE PROBANDO ALGO NUEVO
             //Se crea un nuevo hilo para que el reproductor no laguee :v
             new Thread(new Runnable() {
                 public void run() {
-
+                    boton = true;
                     //Aquí agregamos el proceso a ejecutar.
                     int x = 0;
-                    direcciones = new String[files.length];
                     ExtraerTAGS tag = new ExtraerTAGS();
-                    for (File file : files) {
+                    System.out.println("Si funciono va a imprimir todas las direcciones");
+                    Collections.addAll(ubicacionesArrayList, canciones);
+                    for (long i = 0; i < player.dir.length(); i++) {
                         try {
-                            direcciones[x] = file.getAbsolutePath();
-                            System.out.println(direcciones[x]);
-                            //tag.Informacion(direcciones[x]);
-                            tag.Etiquetas(direcciones[x], tableModel, (x + 1)); //Se le suma uno para que no empiece en cero
+                            //ubicacionesArrayList.add(canciones[i]);
+                            //System.out.println(ubicacionesArrayList.get(x));
+                            tag.Etiquetas(ubicacionesArrayList.get(x), tableModel, (x + 1)); //Se le suma uno para que no empiece en cero
                             x++;
 
                         } catch (IOException | UnsupportedTagException | InvalidDataException ex) {
@@ -278,6 +311,7 @@ public class prueba extends javax.swing.JFrame {
 
                 }
             }).start();
+
             //Evitar que las celdas sea editables
             for (int c = 0; c < this.tablaReproductor.getColumnCount(); c++) {
                 Class<?> col_class = this.tablaReproductor.getColumnClass(c);
@@ -285,10 +319,7 @@ public class prueba extends javax.swing.JFrame {
             }
         }
 
-//        File[] filesInDirectory = chooser.getCurrentDirectory().listFiles();
-//        for (File file : filesInDirectory) {
-//            System.out.println(file.getName());
-//        }
+
     }//GEN-LAST:event_btnImportarCancionesActionPerformed
 
     private void txtBuscarKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtBuscarKeyReleased
@@ -297,97 +328,45 @@ public class prueba extends javax.swing.JFrame {
     }//GEN-LAST:event_txtBuscarKeyReleased
 
     private void tablaReproductorMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tablaReproductorMouseClicked
-
-        ExtraerTAGS tag = new ExtraerTAGS();
-        int pos;
         //Aqui se reproduce cancion de la tabla al darle click
         int clicks = evt.getClickCount();
         if (clicks == 2) {
             try {
-                int fila = (this.tablaReproductor.getSelectedRow() - 1);
-                int columna = 0;
-
-                pos = (int) (this.tablaReproductor.getValueAt(fila, columna));
-                System.out.println("La posicion es: " + (pos + 1));
-                player.reproducir(direcciones[pos]);
-                tag.Etiquetas(direcciones[pos]);
-                this.lblNum.setText((String.valueOf(pos) + 1));
-                this.lblArtista.setText(tag.artista);
-                this.lblTitulo.setText(tag.titulo);
-                this.lblAnhio.setText(tag.anhio);
-                this.lblGenero.setText(tag.genero);
-                
-
-            } catch (ClassCastException e) {
-                System.out.println("No era un entero: " + e);
-            } catch (NullPointerException a) {
-                System.out.println("No habia numero:" + a);
-            } catch (IOException ex) {
-                Logger.getLogger(prueba.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (UnsupportedTagException ex) {
-                Logger.getLogger(prueba.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (InvalidDataException ex) {
-                Logger.getLogger(prueba.class.getName()).log(Level.SEVERE, null, ex);
-            } finally {
-
-//                // int fila = (this.tablaReproductor.convertRowIndexToView(0) + 1);
-//                int columna = 0;
-//                int fila = (this.tablaReproductor.convertRowIndexToModel(0) - 1);
-//                int pos = (int) (this.tablaReproductor.getValueAt(fila, columna));
-                try {
-                    int viewRow = this.tablaReproductor.getSelectedRow();
-                    int modelRow = this.tablaReproductor.convertRowIndexToModel(viewRow);
-                    int viewColumn = this.tablaReproductor.getSelectedColumn();
-                    int modelColumn = this.tablaReproductor.convertColumnIndexToModel(viewColumn);
-                    Object valor = tableModel.getValueAt(modelRow, 0);
-                    pos = (Integer) (valor);
-                    valor = null;
-
-                    System.out.println("La posicion es: " + (pos + 1));
-                    pos--;
-                    player.reproducir(direcciones[pos]);
-                    tag.Etiquetas(direcciones[pos]);
-                    this.lblNum.setText((String.valueOf(pos) + 1));
-                    this.lblArtista.setText(tag.artista);
-                    this.lblTitulo.setText(tag.titulo);
-                    this.lblAnhio.setText(tag.anhio);
-                    this.lblGenero.setText(tag.genero);
-
-                } catch (Exception e) {
-                    System.out.println("Ocurrio este error: " + e);
+                int viewRow = this.tablaReproductor.getSelectedRow();
+                int modelRow = this.tablaReproductor.convertRowIndexToModel(viewRow);
+                Object valor = tableModel.getValueAt(modelRow, 0);
+                pos = (Integer) (valor);
+                pos--;
+                valor = null;
+                System.out.println("La posicion es: " + pos);
+                if (player.reproducir(ubicacionesArrayList.get(pos))) {
+                    tag.Etiquetas(ubicacionesArrayList.get(pos));
+                    etiquetasLabel();//Se les da el valor a los label de las etiquetas de la cancion
+                    if (tag.hayImagen) {
+                        //ImageIcon icon = new ImageIcon(tag.image);
+                        this.lblImagen.setIcon(tag.ImagePeke);//asignandole la imagen al label
+                    }else{
+                        this.lblImagen.setIcon(null);//quitando la imagen
+                    }
+                }else{
+                    this.txtBuscar.setText("");
+                    JOptionPane.showMessageDialog(this, "Lo siento, algo ha salido mal y no puedo reproducir esa canción.\n\nLa quitare de la biblioteca.", "Informacion", 0);
+                    tableModel.removeRow(pos); //Quitando de la JTable
+                    ubicacionesArrayList.remove(pos); // Quitando del ArrayList
                 }
-//                finally {
-////                    int viewRow = this.tablaReproductor.getSelectedRow();
-////                    int modelRow = this.tablaReproductor.convertRowIndexToModel(viewRow);
-////                    int viewColumn = this.tablaReproductor.getSelectedColumn();
-////                    int modelColumn = this.tablaReproductor.convertColumnIndexToModel(viewColumn);
-//                    //Object valor = tableModel.getValueAt(modelRow, modelColumn);
-//                    int fila = this.tablaReproductor.getRowSorter().convertRowIndexToView(0) + 1;
-//
-//                    // String cadena = String.valueOf(this.tablaReproductor.getValueAt(fila, 0));
-//                    pos = Integer.parseInt(tableModel.getValueAt(fila, 0).toString());
-//
-//                    System.out.println("La posicion es: " + (pos + 1));
-//                    pos--;
-//                    player.reproducir(direcciones[pos]);
-//                    try {
-//                        tag.Etiquetas(direcciones[pos]);
-//                    } catch (IOException ex) {
-//                        Logger.getLogger(prueba.class.getName()).log(Level.SEVERE, null, ex);
-//                    } catch (UnsupportedTagException ex) {
-//                        Logger.getLogger(prueba.class.getName()).log(Level.SEVERE, null, ex);
-//                    } catch (InvalidDataException ex) {
-//                        Logger.getLogger(prueba.class.getName()).log(Level.SEVERE, null, ex);
-//                    }
-//                    this.lblNum.setText(String.valueOf((pos + 1)));
-//                    this.lblArtista.setText(tag.artista);
-//                    this.lblTitulo.setText(tag.titulo);
-//                    this.lblAnhio.setText(tag.anhio);
-//                    this.lblGenero.setText(tag.genero);
-//                }
+
+            } catch (ClassCastException | NullPointerException e) {
+
+            } catch (IOException | UnsupportedTagException | InvalidDataException ex) {
+                Logger.getLogger(prueba.class.getName()).log(Level.SEVERE, null, ex);
             }
+
         }
     }//GEN-LAST:event_tablaReproductorMouseClicked
+
+    private void txtBuscarPropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_txtBuscarPropertyChange
+        buscar(this.txtBuscar.getText());
+    }//GEN-LAST:event_txtBuscarPropertyChange
 
     /**
      * @param args the command line arguments
@@ -434,12 +413,13 @@ public class prueba extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnImportarCancion;
-    private javax.swing.JButton btnImportarCanciones;
+    public final javax.swing.JButton btnImportarCanciones = new javax.swing.JButton();
     private javax.swing.JLabel jLabel1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JLabel lblAnhio;
     private javax.swing.JLabel lblArtista;
     private javax.swing.JLabel lblGenero;
+    private javax.swing.JLabel lblImagen;
     private javax.swing.JLabel lblNum;
     private javax.swing.JLabel lblTitulo;
     private javax.swing.JTable tablaReproductor;
